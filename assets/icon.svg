@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">48mark interface quality mark</title>
+  <rect x="4" y="4" width="120" height="120" rx="26" fill="#102A2A"/>
+  <path d="M28 34h30v26H28zM68 34h30v26H68zM28 68h30v26H28z" fill="none" stroke="#F3F6ED" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M70 81l9 9 21-25" fill="none" stroke="#C7F36B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

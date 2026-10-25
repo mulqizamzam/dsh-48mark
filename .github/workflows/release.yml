@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Align tag with manifest version
+        id: meta
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          test "$GITHUB_REF_NAME" = "v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Validate package and run tests
+        run: npm run verify
+      - name: Build and compare release archives
+        run: |
+          mkdir -p dist
+          python3 scripts/package-release.py "dist/dsh-48mark-${{ steps.meta.outputs.version }}.zip"
+          python3 scripts/package-release.py "dist/dsh-48mark-${{ steps.meta.outputs.version }}-check.zip"
+          cmp "dist/dsh-48mark-${{ steps.meta.outputs.version }}.zip" "dist/dsh-48mark-${{ steps.meta.outputs.version }}-check.zip"
+          python3 - <<'PY'
+          import zipfile
+          path = 'dist/dsh-48mark-${{ steps.meta.outputs.version }}.zip'
+          with zipfile.ZipFile(path) as archive:
+              bad = archive.testzip()
+              if bad:
+                  raise SystemExit(f'Corrupt member: {bad}')
+              names = archive.namelist()
+              if not names or not all(name.startswith('dsh-48mark/') for name in names):
+                  raise SystemExit('Unexpected archive layout')
+          print(f'Validated {len(names)} release archive members.')
+          PY
+          sha256sum "dist/dsh-48mark-${{ steps.meta.outputs.version }}.zip"
+          mkdir -p dist/release
+          cp "dist/dsh-48mark-${{ steps.meta.outputs.version }}.zip" dist/release/
+          cp "dist/dsh-48mark-${{ steps.meta.outputs.version }}.zip.sha256" dist/release/
+          cp CHANGELOG.md dist/release/CHANGELOG.md
+      - name: Upload verified release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh-48mark-release
+          path: dist/release/*
+          if-no-files-found: error
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified release files
+        uses: actions/download-artifact@v4
+        with:
+          name: dsh-48mark-release
+          path: release-assets
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "release-assets/dsh-48mark-${{ needs.verify.outputs.version }}.zip" \
+            "release-assets/dsh-48mark-${{ needs.verify.outputs.version }}.zip.sha256" \
+            --verify-tag \
+            --title "dsh-48mark ${{ needs.verify.outputs.version }}" \
+            --notes-file release-assets/CHANGELOG.md

@@ -1,0 +1,64 @@
+{
+  "name": "dsh-48mark",
+  "version": "0.1.0",
+  "description": "Design and product-engineering workflow skills for DeepSeek Harness",
+  "author": "mulqizamzam",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "skills/",
+    "assets/",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "docs/",
+    "scripts/"
+  ],
+  "scripts": {
+    "check": "node scripts/validate-package.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "verify": "npm run check && npm test"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "dsh": "0.2.1-rc.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-skill": "0.2.1-rc.2"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-skill": "0.2.1-rc.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mulqizamzam/dsh-48mark.git"
+  },
+  "homepage": "https://github.com/mulqizamzam/dsh-48mark#readme",
+  "bugs": {
+    "url": "https://github.com/mulqizamzam/dsh-48mark/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "design-engineering",
+    "accessibility",
+    "ui-quality",
+    "skills"
+  ],
+  "icon": "./assets/icon.svg",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

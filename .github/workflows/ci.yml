@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Validate package structure
+        run: npm run check
+      - name: Run provider tests
+        run: npm test
+      - name: Build two deterministic release archives
+        run: |
+          python3 scripts/package-release.py dist/dsh-48mark-a.zip
+          python3 scripts/package-release.py dist/dsh-48mark-b.zip
+          cmp dist/dsh-48mark-a.zip dist/dsh-48mark-b.zip
+          sha256sum dist/dsh-48mark-a.zip dist/dsh-48mark-b.zip
+          python3 - <<'PY'
+          import zipfile
+          for path in ('dist/dsh-48mark-a.zip', 'dist/dsh-48mark-b.zip'):
+              with zipfile.ZipFile(path) as archive:
+                  bad = archive.testzip()
+                  if bad:
+                      raise SystemExit(f'{path}: corrupt member {bad}')
+                  names = archive.namelist()
+                  if not names or not all(name.startswith('dsh-48mark/') for name in names):
+                      raise SystemExit(f'{path}: unexpected archive root')
+          print('Archive integrity and root layout verified.')
+          PY
