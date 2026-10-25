@@ -25,9 +25,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          existing="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0" --jq '.object.sha' 2>/dev/null || true)"
-          if [ -n "$existing" ]; then
-            test "$existing" = "$TAG_OBJECT" || { echo "v0.1.0 already points to an unexpected object"; exit 1; }
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0" >/dev/null 2>&1; then
+            existing="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0" --jq '.object.sha')"
+            if [ "$existing" != "$TAG_OBJECT" ] && [ "$existing" != "$SOURCE_COMMIT" ]; then
+              echo "v0.1.0 already points to an unexpected object: $existing"
+              exit 1
+            fi
           else
             gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
               -f ref=refs/tags/v0.1.0 \
@@ -48,7 +51,10 @@ jobs:
           python3 scripts/package-release.py dist/dsh-48mark-0.1.0-check.zip
           cmp dist/dsh-48mark-0.1.0.zip dist/dsh-48mark-0.1.0-check.zip
           sha256sum dist/dsh-48mark-0.1.0.zip
-          gh release view v0.1.0 >/dev/null 2>&1 && { echo "Release v0.1.0 already exists; refusing to replace it"; exit 1; }
+          if gh release view v0.1.0 >/dev/null 2>&1; then
+            echo "Release v0.1.0 already exists; refusing to replace it"
+            exit 1
+          fi
           gh release create v0.1.0 \
             dist/dsh-48mark-0.1.0.zip \
             dist/dsh-48mark-0.1.0.zip.sha256 \
