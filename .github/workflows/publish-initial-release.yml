@@ -1,0 +1,57 @@
+name: Publish initial release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-initial-release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the publishing workflow
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create the original annotated tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: 89a3ac8f7b7a98a41a7c92de9fe9a5c31fb238d5
+          TAG_OBJECT: 1c1ca94acc842483b754cc4a444d8e410bf0ff5c
+        shell: bash
+        run: |
+          set -euo pipefail
+          existing="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0" --jq '.object.sha' 2>/dev/null || true)"
+          if [ -n "$existing" ]; then
+            test "$existing" = "$TAG_OBJECT" || { echo "v0.1.0 already points to an unexpected object"; exit 1; }
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref=refs/tags/v0.1.0 \
+              -f sha="$TAG_OBJECT"
+          fi
+          git checkout --detach "$SOURCE_COMMIT"
+          test "$(node -p "require('./package.json').version")" = "0.1.0"
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+      - name: Verify source and deterministic package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run verify
+          mkdir -p dist
+          python3 scripts/package-release.py dist/dsh-48mark-0.1.0.zip
+          python3 scripts/package-release.py dist/dsh-48mark-0.1.0-check.zip
+          cmp dist/dsh-48mark-0.1.0.zip dist/dsh-48mark-0.1.0-check.zip
+          sha256sum dist/dsh-48mark-0.1.0.zip
+          gh release view v0.1.0 >/dev/null 2>&1 && { echo "Release v0.1.0 already exists; refusing to replace it"; exit 1; }
+          gh release create v0.1.0 \
+            dist/dsh-48mark-0.1.0.zip \
+            dist/dsh-48mark-0.1.0.zip.sha256 \
+            --verify-tag \
+            --title "dsh-48mark 0.1.0" \
+            --notes-file CHANGELOG.md
